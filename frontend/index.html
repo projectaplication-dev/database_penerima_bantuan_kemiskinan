@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Database Penerima Bantuan</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header><div><strong>DATABASE PENERIMA BANTUAN</strong><span>Kemiskinan Ekstrem</span></div>
+<div>{{user.username}} ({{user.role}}) · <a href="/logout">Keluar</a></div></header>
+<main>
+<div class="card search">
+<h2>Pencarian Penerima</h2>
+<div class="searchrow"><input id="nik" maxlength="16" inputmode="numeric" placeholder="Masukkan NIK 16 digit"><button onclick="cari()">Cari</button></div>
+<div id="msg"></div>
+</div>
+<div id="hasil" class="card hidden"></div>
+
+{% if user.role == 'admin' %}
+<div class="card">
+<h2>Import Data CSV</h2>
+<p>Kolom: NIK,NAMA_LENGKAP,ALAMAT,DESA,KECAMATAN,KABUPATEN,DESIL,STATUS_PENERIMA,KETERANGAN</p>
+<input type="file" id="file" accept=".csv"><button onclick="impor()">Import / Update</button>
+<div id="importMsg"></div>
+</div>
+{% endif %}
+</main>
+<script>
+async function cari(){
+ const nik=document.getElementById('nik').value.trim();
+ const msg=document.getElementById('msg'), hasil=document.getElementById('hasil');
+ hasil.classList.add('hidden'); msg.textContent='';
+ if(!/^\d{16}$/.test(nik)){msg.innerHTML='<div class="error">NIK harus terdiri dari 16 digit.</div>';return;}
+ const r=await fetch('/api/penerima/'+nik); const j=await r.json();
+ if(!r.ok){msg.innerHTML='<div class="error">'+(j.message||j.error||'Terjadi kesalahan')+'</div>';return;}
+ const d=j.data;
+ hasil.innerHTML=`<h2>Data Penerima</h2>
+ <div class="grid">
+ <div><b>NIK</b><span>${esc(d.nik)}</span></div>
+ <div><b>Nama Lengkap</b><span>${esc(d.nama_lengkap)}</span></div>
+ <div><b>Alamat</b><span>${esc(d.alamat)}</span></div>
+ <div><b>Desa/Kelurahan</b><span>${esc(d.desa)}</span></div>
+ <div><b>Kecamatan</b><span>${esc(d.kecamatan)}</span></div>
+ <div><b>Kabupaten</b><span>${esc(d.kabupaten)}</span></div>
+ <div><b>Desil</b><span>${esc(d.desil)}</span></div>
+ <div><b>Status</b><span>${esc(d.status_penerima)}</span></div>
+ <div><b>Keterangan</b><span>${esc(d.keterangan)}</span></div>
+ </div>`;
+ hasil.classList.remove('hidden');
+}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+async function impor(){
+ const f=document.getElementById('file').files[0]; if(!f){document.getElementById('importMsg').textContent='Pilih file CSV.';return;}
+ const fd=new FormData(); fd.append('file',f);
+ const r=await fetch('/api/import',{method:'POST',body:fd}); const j=await r.json();
+ document.getElementById('importMsg').textContent=r.ok?`Berhasil memproses ${j.processed} baris.`:`Gagal: ${j.error}`;
+}
+document.getElementById('nik').addEventListener('keydown',e=>{if(e.key==='Enter')cari()});
+</script>
+</body></html>
